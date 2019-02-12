@@ -42,7 +42,8 @@ const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 10,
 		// height: 10,
-		color: '#888'
+		color: '#888',
+		
 	}
 });
 

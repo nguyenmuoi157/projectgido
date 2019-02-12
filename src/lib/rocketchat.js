@@ -38,7 +38,6 @@ const RocketChat = {
 		}
     },
     connect(url) {
-			debugger;
 		if (this.ddp) {
 			this.ddp.disconnect();
 		}
@@ -128,7 +127,6 @@ const RocketChat = {
 		}).then(response => response.json());
     },
     loginWithPassword({ username, password, code }, callback) {
-			debugger;
 		let params = {};
 		// const state = reduxStore.getState();
 

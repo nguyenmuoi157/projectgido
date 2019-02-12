@@ -2,9 +2,9 @@ import React, { Component } from 'react'
 import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity, Button } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ddp from '../lib/ddp';
-import RocketChat from '../lib/rocketchat';
 import { hashPassword } from 'react-native-meteor/lib/utils';
 import RoomItem from '../presentation/RoomItem';
+import Rocket from '../lib/Rocket';
 
 export default class RoomView extends Component {
     constructor(props) {
@@ -39,18 +39,19 @@ export default class RoomView extends Component {
     }
 
     async componentDidMount() {
-        fetch('https://gist.githubusercontent.com/yllongboy/81de024b02f1b668818066bcafbf3c4c/raw/5a508fd580cc1c3d104a300589e7e88d895fa766/whatsapp_contacts.json')
-            .then(response => response.json())
-            .then((data) => {
-                console.log(data);
-                this.setState({
-                    DataList: data,
-                    loaded: true
-                })
-            });
+        // fetch('https://gist.githubusercontent.com/yllongboy/81de024b02f1b668818066bcafbf3c4c/raw/5a508fd580cc1c3d104a300589e7e88d895fa766/whatsapp_contacts.json')
+        //     .then(response => response.json())
+        //     .then((data) => {
+        //         console.log(data);
+        //         this.setState({
+        //             DataList: data,
+        //             loaded: true
+        //         })
+        //     });
 
+         let url = this.completeUrl('http://192.168.1.100:4000');
+        // Rocket.connect(url);
 
-        let url = this.completeUrl('http://192.168.1.100:4000');
         this.ddp = new Ddp(url);
         this.ddp.on('connected', () => {
             console.log("connected");
@@ -72,18 +73,8 @@ export default class RoomView extends Component {
         });
     }
 
-    me({ server, token, userId }) {
-        return fetch(`${server}/api/v1/me`, {
-            method: 'get',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Auth-Token': token,
-                'X-User-Id': userId
-            }
-        }).then(response => response.json());
-    }
-
     _keyExtractor = (item, index) => item.id;
+
     async getRoomView() {
         let [subscriptions, rooms] = await Promise.all([this.ddp.call('subscriptions/get', 0), this.ddp.call('rooms/get', 0)]);
         const data = subscriptions.map((subscription) => {
@@ -105,9 +96,31 @@ export default class RoomView extends Component {
         this.setState({
             DataList: data
         });
+        // let data = await Rocket.getRoom();
+        // console.log('list room', data);
+        // if (data) {
+        //     this.setState({
+        //         DataList: data
+        //     })
+        // }
 
     }
     async _onPress() {
+        // Rocket.loginWithPassword({ username: "muoinv", password: "12345678" })
+        //     .then((result) => {
+        //         if (result) {
+        //             this.setState({
+        //                 userId: result.id,
+        //                 token: result.token
+        //             });
+
+        //             Rocket.subscribe("stream-notify-user", `${result.id}/subscriptions-changed`, false);
+        //             Rocket.subscribe("stream-notify-user", `${result.token}/rooms-changed`, false);
+        //         }
+        //     }).catch((err) => {
+        //         console.log(err);
+        //     })
+
         this.ddp.call("login", {
             user: {
                 username: 'muoinv'
@@ -129,24 +142,6 @@ export default class RoomView extends Component {
 
         this.getRoomView();
 
-    }
-
-    completeUrl = (url) => {
-        url = url.trim();
-
-        if (/^(\w|[0-9-_]){3,}$/.test(url) &&
-            /^(htt(ps?)?)|(loca((l)?|(lh)?|(lho)?|(lhos)?|(lhost:?\d*)?)$)/.test(url) === false) {
-            url = `${url}.rocket.chat`;
-        }
-
-        if (/^(https?:\/\/)?(((\w|[0-9])+(\.(\w|[0-9-_])+)+)|localhost)(:\d+)?$/.test(url)) {
-            if (/^localhost(:\d+)?/.test(url)) {
-                url = `http://${url}`;
-            } else if (/^https?:\/\//.test(url) === false) {
-                url = `https://${url}`;
-            }
-        }
-        return url.replace(/\/+$/, '');
     }
 
     _renderItem = ({ item }) => {

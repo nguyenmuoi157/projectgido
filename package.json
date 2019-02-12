@@ -16,6 +16,8 @@
     "react-native-meteor": "^1.4.0",
     "react-native-vector-icons": "^6.2.0",
     "react-navigation": "^3.0.9",
+    "react-redux": "^6.0.0",
+    "redux": "^4.0.1",
     "rn-fetch-blob": "^0.10.15",
     "watchman": "^1.0.0"
   },

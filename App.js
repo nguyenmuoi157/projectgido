@@ -1,16 +1,20 @@
-import React, { Component } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { createStackNavigator, createAppContainer } from "react-navigation";
-import RoomView from './src/components/RoomView';
-import ChatView from './src/components/ChatView';
-import LoginView from './src/components/LoginView';
-const AppNavigator = createStackNavigator({
-  RoomView: {
-    screen: RoomView
-  },
-  ChatView: {
-    screen: ChatView
+import React, { Component } from 'react'
+import AppNavigator from './src/RootNavigation';
+
+
+import { Provider } from 'react-redux'
+import { createStore } from 'redux'
+import rootReducer from './src/reducers';
+
+const store = createStore(rootReducer)
+
+
+export default class App extends Component {
+  render() {
+    return (
+      <Provider store={store}>
+        <AppNavigator />
+      </Provider>
+    )
   }
-});
-export default createAppContainer(AppNavigator);
-//export default LoginView;
+}
