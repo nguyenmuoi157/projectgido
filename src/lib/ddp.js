@@ -1,4 +1,6 @@
 import EJSON from 'ejson';
+import { resolve } from 'uri-js';
+import { reject } from 'rsvp';
 
 class EventEmitter {
 	constructor() {
@@ -45,21 +47,20 @@ export default class Socket extends EventEmitter {
 		this.subscriptions = {};
 		this._connect();
 		this.ddp = new EventEmitter();
-		this.on('ping', () => this.send({ msg: 'pong' }));
+		this.on('ping', () => {this.send({ msg: 'pong' }); console.log("ping-pong")});
 		this.on('result', data => this.ddp.emit(data.id, { id: data.id, result: data.result, error: data.error }));
 		this.on('ready', data => this.ddp.emit(data.subs[0], data));
 	}
 	send(obj) {
 		return new Promise((resolve, reject) => {
-			debugger;
 			this.id += 1;
-			const id = obj.id || `${ this.id }`;
+			const id = obj.id || `${this.id}`;
 			this.connection.send(EJSON.stringify({ ...obj, id }));
 			this.ddp.once(id, data => (data.error ? reject(data.error) : resolve({ id, ...data })));
 		});
 	}
 	_connect() {
-		const connection = new WebSocket(`${ this.url }/websocket`);
+		const connection = new WebSocket(`${this.url}/websocket`);
 		connection.onopen = () => {
 			this.emit('open');
 			this.send({ msg: 'connect', version: '1', support: ['1', 'pre2', 'pre1'] });

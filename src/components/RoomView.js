@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity } from 'react-native'
+import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity, Button } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ddp from '../lib/ddp';
 import RocketChat from '../lib/rocketchat';
@@ -16,7 +16,9 @@ export default class RoomView extends Component {
         this.state = {
             DataList: [],
             loaded: false,
-            myuserid: ''
+            myuserid: '',
+            token:'',
+            userId:''
         }
 
     }
@@ -42,6 +44,12 @@ export default class RoomView extends Component {
     handleLogin(result) {
         console.log(result);
     }
+
+    componentWillMount() {
+
+    }
+
+
     async componentDidMount() {
         fetch('https://gist.githubusercontent.com/yllongboy/81de024b02f1b668818066bcafbf3c4c/raw/5a508fd580cc1c3d104a300589e7e88d895fa766/whatsapp_contacts.json')
             .then(response => response.json())
@@ -56,9 +64,8 @@ export default class RoomView extends Component {
 
         let url = this.completeUrl('http://192.168.1.100:4000');
         this.ddp = new Ddp(url);
-        this.ddp._connect();
         this.ddp.on('connected', () => {
-            debugger;
+            console.log("connected");
         });
 
         this.ddp.on('connected', () => this.ddp.subscribe('activeUsers', null, false));
@@ -67,51 +74,12 @@ export default class RoomView extends Component {
         });
 
         this.ddp.on('stream-notify-room', (ddpMessage) => {
-            console.log('stream-notify-room');
+            console.log('stream-notify-room',ddpMessage);
         });
 
         this.ddp.on('stream-notify-user', (ddpMessage) => {
-            console.log('stream-notify-user');
+            console.log('stream-notify-user có tin nhắn đến',ddpMessage);
         });
-
-        // debugger;
-        // RocketChat.connect(url).then(function(result){
-        //     debugger;
-        // }).catch(function(err){
-        //     debugger;
-        // });
-
-
-        let args = {
-            resume: false,
-            username: 'muoinv',
-            password: '12345678',
-            code: null
-        }
-        debugger;
-        this.ddp.call('login',[{
-            "user": { "username": "muoinv" },
-            "password": {
-                "digest": hashPassword("12345678"),
-                "algorithm":"sha-256"
-            }
-        }]).then((result)=>{
-            console.log('login',result);
-        });
-
-    //this.loginrocket({server:url, username:'muoinv', password:'12345678'})
-
-
-        // let login = loginCall(args);
-        // debugger;
-        // login.then((result) => {
-        //     debugger;
-        // });
-        // loginCall(args).then((result)=> {
-        //     debugger;
-        //     console.log('result', result);
-        // });
-
     }
     componentWillUpdate() {
 
@@ -119,48 +87,47 @@ export default class RoomView extends Component {
 
 
     me({ server, token, userId }) {
-		return fetch(`${ server }/api/v1/me`, {
-			method: 'get',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-Auth-Token': token,
-				'X-User-Id': userId
-			}
-		}).then(response => response.json());
+        return fetch(`${server}/api/v1/me`, {
+            method: 'get',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': token,
+                'X-User-Id': userId
+            }
+        }).then(response => response.json());
     }
-    
- loginrocket({ server, username, password }) {
-		return fetch(`${ server }/api/v1/login`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				// 'X-Auth-Token': token,
-				// 'X-User-Id': userId
-            },
-            body: JSON.stringify({
-                user: username,
-                password: password
-            })
-        }).then(response => response.json())
-        .then((data)=>{
-            console.log(data);
-        });
-    }
-
 
     _keyExtractor = (item, index) => item.id;
     _onPress(item) {
-        let url = this.completeUrl('http://192.168.1.100:4000');
+        this.ddp.call("login", {
+            user: {
+                username: 'muoinv'
+            },
+            password: hashPassword("12345678")
+        }).then((result) => {
+            console.log('login', result);
+            this.setState({
+                userId : result.id,
+                token : result.token
+            });
+
+
+            this.ddp.subscribe("stream-notify-user",`${result.id}/subscriptions-changed`,false);
+            this.ddp.subscribe("stream-notify-user",`${result.id}/rooms-changed`,false);
 
 
 
-        // var result = rocketchat.connect('http://192.168.1.100:4000')
-        // console.log(result);
+        }).catch((err) => {
+            console.log('loi dang nhap',err);
+        });
 
-        // rocketchat.loginWithPassword({ username: 'muoinv', password: '12345678' },function(result){
-        //    console.log(result);
-        // });
-        //this.props.navigation.navigate('ChatView', { item });
+
+        this.ddp.call("rooms/get",{
+            $date: 0
+        }).then((result)=>{
+            console.log("danh sach phong", result);
+        })
+        
     }
 
     completeUrl = (url) => {
@@ -214,6 +181,7 @@ export default class RoomView extends Component {
                 renderItem={this._renderItem}
                 extraData={this.state}
             />
+
         )
     }
 }
