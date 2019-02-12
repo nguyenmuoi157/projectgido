@@ -4,12 +4,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ddp from '../lib/ddp';
 import RocketChat from '../lib/rocketchat';
 import { hashPassword } from 'react-native-meteor/lib/utils';
-// --------------------------------------
-var authToken = "9fbRkdLcSmY34EGOFkWzhzzhffvGbMrYQMkvEmFWoy_";
-const loginCall = args => (args.resume ? RocketChat.login(args) : RocketChat.loginWithPassword(args));
-const meCall = args => RocketChat.me(args);
-const userInfoCall = args => RocketChat.userInfo(args);
-// --------------------------------------------
+import RoomItem from '../presentation/RoomItem';
+
 export default class RoomView extends Component {
     constructor(props) {
         super(props);
@@ -17,8 +13,8 @@ export default class RoomView extends Component {
             DataList: [],
             loaded: false,
             myuserid: '',
-            token:'',
-            userId:''
+            token: '',
+            userId: ''
         }
 
     }
@@ -41,14 +37,6 @@ export default class RoomView extends Component {
         }
         return url.replace(/\/+$/, '');
     }
-    handleLogin(result) {
-        console.log(result);
-    }
-
-    componentWillMount() {
-
-    }
-
 
     async componentDidMount() {
         fetch('https://gist.githubusercontent.com/yllongboy/81de024b02f1b668818066bcafbf3c4c/raw/5a508fd580cc1c3d104a300589e7e88d895fa766/whatsapp_contacts.json')
@@ -74,17 +62,15 @@ export default class RoomView extends Component {
         });
 
         this.ddp.on('stream-notify-room', (ddpMessage) => {
-            console.log('stream-notify-room',ddpMessage);
+            console.log('stream-notify-room', ddpMessage);
         });
 
         this.ddp.on('stream-notify-user', (ddpMessage) => {
-            console.log('stream-notify-user có tin nhắn đến',ddpMessage);
+            //console.log('stream-notify-user có tin nhắn đến', ddpMessage);
+            this.getRoomView();
+
         });
     }
-    componentWillUpdate() {
-
-    }
-
 
     me({ server, token, userId }) {
         return fetch(`${server}/api/v1/me`, {
@@ -98,7 +84,30 @@ export default class RoomView extends Component {
     }
 
     _keyExtractor = (item, index) => item.id;
-    _onPress(item) {
+    async getRoomView() {
+        let [subscriptions, rooms] = await Promise.all([this.ddp.call('subscriptions/get', 0), this.ddp.call('rooms/get', 0)]);
+        const data = subscriptions.map((subscription) => {
+            const room = rooms.find(({ _id }) => _id === subscription.rid);
+            if (room) {
+                subscription.roomUpdatedAt = room._updatedAt;
+                subscription.ro = room.ro;
+                subscription.lastMessage = room.lastMessage.msg;
+            }
+            if (subscription.roles) {
+                subscription.roles = subscription.roles.map(role => ({ value: role }));
+            }
+            return subscription;
+        });
+
+        data.sort((a, b) => {
+            return b.roomUpdatedAt - a.roomUpdatedAt
+        })
+        this.setState({
+            DataList: data
+        });
+
+    }
+    async _onPress() {
         this.ddp.call("login", {
             user: {
                 username: 'muoinv'
@@ -107,27 +116,19 @@ export default class RoomView extends Component {
         }).then((result) => {
             console.log('login', result);
             this.setState({
-                userId : result.id,
-                token : result.token
+                userId: result.id,
+                token: result.token
             });
 
-
-            this.ddp.subscribe("stream-notify-user",`${result.id}/subscriptions-changed`,false);
-            this.ddp.subscribe("stream-notify-user",`${result.id}/rooms-changed`,false);
-
-
+            this.ddp.subscribe("stream-notify-user", `${result.id}/subscriptions-changed`, false);
+            this.ddp.subscribe("stream-notify-user", `${result.id}/rooms-changed`, false);
 
         }).catch((err) => {
-            console.log('loi dang nhap',err);
+            console.log('loi dang nhap', err);
         });
 
+        this.getRoomView();
 
-        this.ddp.call("rooms/get",{
-            $date: 0
-        }).then((result)=>{
-            console.log("danh sach phong", result);
-        })
-        
     }
 
     completeUrl = (url) => {
@@ -150,38 +151,53 @@ export default class RoomView extends Component {
 
     _renderItem = ({ item }) => {
         return (
-            <TouchableOpacity style={styles.listItemContainer} onPress={() => { this._onPress(item) }}>
-                <View style={styles.iconContainer}>
-                    <Image source={{ uri: item.image }} style={styles.initStyle} resizeMode='contain' />
-                </View>
-                <View style={styles.callerDetailsContainer}>
-                    <View style={styles.callerDetailsContainerWrap}>
-                        <View style={styles.nameContainer}>
-                            <Text>{item.first_name}</Text>
-                            <View style={styles.dateContainer}>
-                                <Icon name={item.missed ? "call-missed" : "call-received"} size={15} color={item.missed ? "#ed788b" : "#075e54"} />
-                                {/* <Text style={{ fontWeight: '400', color: '#666', fontSize: 12 }}>{item.date} {item.time}</Text> */}
-                            </View>
-                        </View>
-                        <View style={styles.callIconContainer}>
-                            <Text style={{ fontWeight: '400', color: '#666', fontSize: 12 }}>{item.date} {item.time}</Text>
-                            {/* <Icon name="phone" color='#075e54' size={23} style={{ padding: 5 }} /> */}
-                        </View>
-                    </View>
-                </View>
-            </TouchableOpacity>
+            // <TouchableOpacity style={styles.listItemContainer} onPress={() => { this._onPress(item) }}>
+            //     <View style={styles.iconContainer}>
+            //         <Image source={{ uri: item.image }} style={styles.initStyle} resizeMode='contain' />
+            //     </View>
+            //     <View style={styles.callerDetailsContainer}>
+            //         <View style={styles.callerDetailsContainerWrap}>
+            //             <View style={styles.nameContainer}>
+            //                 <Text>{item.name}</Text>
+            //                 <View style={styles.dateContainer}>
+            //                     <Icon name={item.missed ? "call-missed" : "call-received"} size={15} color={item.missed ? "#ed788b" : "#075e54"} />
+            //                     {/* <Text style={{ fontWeight: '400', color: '#666', fontSize: 12 }}>{item.date} {item.time}</Text> */}
+            //                 </View>
+            //             </View>
+            //             <View style={styles.callIconContainer}>
+            //                 <Text style={{ fontWeight: '400', color: '#666', fontSize: 12 }}>{item.date} {item._updatedAt}</Text>
+            //                 {/* <Icon name="phone" color='#075e54' size={23} style={{ padding: 5 }} /> */}
+            //             </View>
+            //         </View>
+            //     </View>
+            // </TouchableOpacity>
+            <RoomItem
+                alert={item.alert}
+                unread={item.unread}
+                userMentions={item.userMentions}
+                favorite={item.f}
+                name={item.name}
+                _updatedAt={item.roomUpdatedAt}
+                key={item._id}
+                type={item.t}
+                baseUrl={this.completeUrl('http://192.168.1.100:4000')}
+                lastMessage={item.lastMessage}
+            //onPress={() => this._onPressItem(item)}
+            />
         );
     };
 
     render() {
         return (
-            <FlatList
-                data={this.state.DataList}
-                keyExtractor={this._keyExtractor}
-                renderItem={this._renderItem}
-                extraData={this.state}
-            />
-
+            <View style={{ flex: 1 }}>
+                <FlatList
+                    data={this.state.DataList}
+                    keyExtractor={this._keyExtractor}
+                    renderItem={this._renderItem}
+                    extraData={this.state}
+                />
+                <Button title="login" onPress={() => { this._onPress() }} />
+            </View>
         )
     }
 }
