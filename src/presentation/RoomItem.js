@@ -1,7 +1,7 @@
 import React from 'react';
 import moment from 'moment';
 import PropTypes from 'prop-types';
-import { View, Text, StyleSheet, TouchableHighlight } from 'react-native';
+import { View, Text, StyleSheet, TouchableHighlight, TouchableOpacity } from 'react-native';
 import Avatar from '../containers/Avatar';
 
 const styles = StyleSheet.create({

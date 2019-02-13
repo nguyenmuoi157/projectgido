@@ -1,16 +1,17 @@
 import React, { Component } from 'react'
-import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity, Button } from 'react-native'
+import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity, Button, AsyncStorage } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Ddp from '../lib/ddp';
 import { hashPassword } from 'react-native-meteor/lib/utils';
 import RoomItem from '../presentation/RoomItem';
 import Rocket from '../lib/Rocket';
+import { connect } from 'react-redux'
 
-export default class RoomView extends Component {
+class RoomView extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            DataList: [],
+            DataList: this.props.DataList,
             loaded: false,
             myuserid: '',
             token: '',
@@ -37,74 +38,42 @@ export default class RoomView extends Component {
         }
         return url.replace(/\/+$/, '');
     }
+    componentWillMount() {
+    }
 
     async componentDidMount() {
-        // fetch('https://gist.githubusercontent.com/yllongboy/81de024b02f1b668818066bcafbf3c4c/raw/5a508fd580cc1c3d104a300589e7e88d895fa766/whatsapp_contacts.json')
-        //     .then(response => response.json())
-        //     .then((data) => {
-        //         console.log(data);
-        //         this.setState({
-        //             DataList: data,
-        //             loaded: true
-        //         })
-        //     });
+        // try {
+        //     let loginStore = await AsyncStorage.getItem("@userlogin");
+        //     let userlogin = JSON.parse(loginStore);
+        //     this.loginWithToken(userlogin.token);
 
-         let url = this.completeUrl('http://192.168.1.100:4000');
-        // Rocket.connect(url);
+        // } catch (error) {
+        //     console.log(error);
+        // }
 
-        this.ddp = new Ddp(url);
-        this.ddp.on('connected', () => {
-            console.log("connected");
-        });
-
-        this.ddp.on('connected', () => this.ddp.subscribe('activeUsers', null, false));
-        this.ddp.on('stream-room-messages', (ddpMessage) => {
-            console.log('stream-room-messages');
-        });
-
-        this.ddp.on('stream-notify-room', (ddpMessage) => {
-            console.log('stream-notify-room', ddpMessage);
-        });
-
-        this.ddp.on('stream-notify-user', (ddpMessage) => {
-            //console.log('stream-notify-user có tin nhắn đến', ddpMessage);
-            this.getRoomView();
-
-        });
     }
 
     _keyExtractor = (item, index) => item.id;
 
     async getRoomView() {
-        let [subscriptions, rooms] = await Promise.all([this.ddp.call('subscriptions/get', 0), this.ddp.call('rooms/get', 0)]);
-        const data = subscriptions.map((subscription) => {
-            const room = rooms.find(({ _id }) => _id === subscription.rid);
-            if (room) {
-                subscription.roomUpdatedAt = room._updatedAt;
-                subscription.ro = room.ro;
-                subscription.lastMessage = room.lastMessage.msg;
-            }
-            if (subscription.roles) {
-                subscription.roles = subscription.roles.map(role => ({ value: role }));
-            }
-            return subscription;
-        });
+        let data = await Rocket.getRoom();
+        if (data) {
+            this.setState({
+                DataList: data
+            })
+        }
 
-        data.sort((a, b) => {
-            return b.roomUpdatedAt - a.roomUpdatedAt
-        })
-        this.setState({
-            DataList: data
-        });
-        // let data = await Rocket.getRoom();
-        // console.log('list room', data);
-        // if (data) {
-        //     this.setState({
-        //         DataList: data
-        //     })
-        // }
+        console.log('state datalist', this.state.DataList)
 
     }
+
+    async loginWithToken(token) {
+        let userlogin = await Rocket.loginWithAuthenticationToken(token);
+        if (userlogin) {
+            await AsyncStorage.setItem("@userlogin", userlogin);
+        }
+    }
+
     async _onPress() {
         // Rocket.loginWithPassword({ username: "muoinv", password: "12345678" })
         //     .then((result) => {
@@ -121,29 +90,32 @@ export default class RoomView extends Component {
         //         console.log(err);
         //     })
 
-        this.ddp.call("login", {
-            user: {
-                username: 'muoinv'
-            },
-            password: hashPassword("12345678")
-        }).then((result) => {
-            console.log('login', result);
-            this.setState({
-                userId: result.id,
-                token: result.token
-            });
+        // this.ddp.call("login", {
+        //     user: {
+        //         username: 'muoinv'
+        //     },
+        //     password: hashPassword("12345678")
+        // }).then((result) => {
+        //     console.log('login', result);
+        //     this.setState({
+        //         userId: result.id,
+        //         token: result.token
+        //     });
 
-            this.ddp.subscribe("stream-notify-user", `${result.id}/subscriptions-changed`, false);
-            this.ddp.subscribe("stream-notify-user", `${result.id}/rooms-changed`, false);
+        //     this.ddp.subscribe("stream-notify-user", `${result.id}/subscriptions-changed`, false);
+        //     this.ddp.subscribe("stream-notify-user", `${result.id}/rooms-changed`, false);
 
-        }).catch((err) => {
-            console.log('loi dang nhap', err);
-        });
+        // }).catch((err) => {
+        //     console.log('loi dang nhap', err);
+        // });
 
         this.getRoomView();
 
     }
-
+    _onPressItem(item) {
+        alert();
+        console.log('item', item);
+    }
     _renderItem = ({ item }) => {
         return (
             // <TouchableOpacity style={styles.listItemContainer} onPress={() => { this._onPress(item) }}>
@@ -177,25 +149,48 @@ export default class RoomView extends Component {
                 type={item.t}
                 baseUrl={this.completeUrl('http://192.168.1.100:4000')}
                 lastMessage={item.lastMessage}
-            //onPress={() => this._onPressItem(item)}
+                onPress={() => this._onPressItem(item)}
             />
         );
     };
 
     render() {
+
+        listDataRoom = this.props.DataList ? this.props.DataList : this.state.DataList;
+        console.log('listDataRoom', listDataRoom)
         return (
-            <View style={{ flex: 1 }}>
-                <FlatList
-                    data={this.state.DataList}
-                    keyExtractor={this._keyExtractor}
-                    renderItem={this._renderItem}
-                    extraData={this.state}
-                />
-                <Button title="login" onPress={() => { this._onPress() }} />
-            </View>
+            // <View style={{ flex: 1 }}>
+            //     <FlatList
+            //         //data={this.state.DataList}
+            //         data={listDataRoom}
+            //         keyExtractor={this._keyExtractor}
+            //         renderItem={this._renderItem}
+            //         extraData={this.state}
+            //     />
+            //     <Button title="login" onPress={() => { this._onPress() }} />
+            // </View>
+            <FlatList
+                //data={this.state.DataList}
+                data={listDataRoom}
+                keyExtractor={this._keyExtractor}
+                renderItem={this._renderItem}
+                extraData={this.state}
+            />
         )
     }
 }
+
+
+const mapStateToProps = (state) => {
+    console.log('state', state);
+
+    return {
+        DataList: state.ListRoomReduces
+    }
+}
+
+export default connect(mapStateToProps, null)(RoomView);
+
 
 const styles = StyleSheet.create({
     logoText: {

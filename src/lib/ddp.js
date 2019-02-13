@@ -1,6 +1,4 @@
 import EJSON from 'ejson';
-import { resolve } from 'uri-js';
-import { reject } from 'rsvp';
 
 class EventEmitter {
 	constructor() {

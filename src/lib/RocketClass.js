@@ -4,8 +4,12 @@ import reduxStore from './CreateStore';
 import onChangeListRoom from '../actions/ChangeListRoomAction';
 const TOKEN_KEY = 'reactnativemeteor_usertoken';
 const SERVER_TIMEOUT = 30000;
-const Rocket = {
-    TOKEN_KEY,
+
+class RocketClass {
+
+    constructor() {
+
+    }
     async testServer(url) {
         if (/^(https?:\/\/)?(((\w|[0-9-_])+(\.(\w|[0-9-_])+)+)|localhost)(:\d+)?$/.test(url)) {
             const response = await fetch(url, { method: 'HEAD' });
@@ -14,12 +18,14 @@ const Rocket = {
             }
         }
         throw new Error({ error: 'invalid server' });
-    },
+    }
+
     reconnect() {
         if (this.ddp) {
             this.ddp.reconnect();
         }
-    },
+    }
+    
     connect(url) {
         if (this.ddp) {
             this.ddp.disconnect();
@@ -167,7 +173,7 @@ const Rocket = {
         //         console.log('co tin nhan den stream-notify-user');
         //     });
         // });
-    },
+    }
     me({ server, token, userId }) {
         return fetch(`${server}/api/v1/me`, {
             method: 'get',
@@ -177,7 +183,7 @@ const Rocket = {
                 'X-User-Id': userId
             }
         }).then(response => response.json());
-    },
+    }
     userInfo({ server, token, userId }) {
         return fetch(`${server}/api/v1/users.info?userId=${userId}`, {
             method: 'get',
@@ -187,7 +193,7 @@ const Rocket = {
                 'X-User-Id': userId
             }
         }).then(response => response.json());
-    },
+    }
     loginWithPassword({ username, password }) {
         return this.ddp.call("login", {
             user: {
@@ -196,27 +202,27 @@ const Rocket = {
             password: hashPassword(password)
         });
 
-    },
+    }
     loginWithAuthenticationToken(authtoken) {
         debugger;
         return this.ddp.call("login", {
             resume: authtoken
         });
-    },
+    }
     subscribe(name, ...params) {
         return this.ddp.subscribe(name, ...params);
-    },
+    }
     emitTyping(room, t = true, username) {
         // const { login } = reduxStore.getState();
         return call('stream-notify-room', `${room}/typing`, username, t);
-    },
+    }
     async _sendMessageCall({ _id, rid, msg }) {
         return call('sendMessage', { _id, rid, msg });
-    },
+    }
     async sendMessage(rid, msg) {
         // const tempMessage = this.getMessage(rid, msg);
         // return RocketChat._sendMessageCall(tempMessage);
-    },
+    }
     loadMessagesForRoom(rid, end, cb) {
         return this.ddp.call('loadHistory', rid, end, 20)
         // .then((data) => {
@@ -240,7 +246,7 @@ const Rocket = {
         //         return Promise.reject(err);
         //     }
         // });
-    },
+    }
     _buildMessage(message) {
         message.status = messagesStatus.SENT;
         message.attachments = message.attachments || [];
@@ -253,7 +259,7 @@ const Rocket = {
         message.reactions = _.map(message.reactions, (value, key) =>
             ({ emoji: key, usernames: value.usernames.map(username => ({ value: username })) }));
         return message;
-    },
+    }
     async getRoom() {
         let [subscriptions, rooms] = await Promise.all([this.ddp.call('subscriptions/get', 0), this.ddp.call('rooms/get', 0)]);
         const data = subscriptions.map((subscription) => {
@@ -273,8 +279,11 @@ const Rocket = {
             return b.roomUpdatedAt - a.roomUpdatedAt
         })
         return data;
+        // this.setState({
+        //     DataList: data
+        // });
     }
-
 }
 
-export default Rocket;
+
+export default new RocketClass;

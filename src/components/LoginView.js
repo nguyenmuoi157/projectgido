@@ -1,13 +1,8 @@
 import React, { Component } from 'react'
-import { Text, View, TextInput, TouchableOpacity, AsyncStorage,Keyboard } from 'react-native'
+import { Text, View, TextInput, TouchableOpacity, AsyncStorage, Keyboard } from 'react-native'
 import styles from './Styles';
 
-import RocketChat from '../lib/rocketchat';
-import * as ConstCommon from '../constaint';
-
-const loginCall = args => (args.resume ? RocketChat.login(args) : RocketChat.loginWithPassword(args));
-const meCall = args => RocketChat.me(args);
-const userInfoCall = args => RocketChat.userInfo(args);
+import Rocket from '../lib/Rocket';
 
 export default class LoginView extends Component {
 
@@ -23,25 +18,46 @@ export default class LoginView extends Component {
         };
 
     }
+    completeUrl = (url) => {
+        url = url.trim();
 
-
-
-
-    submit = () => {
-        debugger;
-        const { username, password, code } = this.state;
-        if (username.trim() === '' || password.trim() === '') {
-           // showToast('Email or password field is empty');
-            return;
+        if (/^(\w|[0-9-_]){3,}$/.test(url) &&
+            /^(htt(ps?)?)|(loca((l)?|(lh)?|(lho)?|(lhos)?|(lhost:?\d*)?)$)/.test(url) === false) {
+            url = `${url}.rocket.chat`;
         }
-        debugger;
-        let url = this.completeUrl("'http://192.168.1.100:4000'");
-        
-        //AsyncStorage.setItem(ConstCommon.SERVER_URL, url);
-        //this.props.loginSubmit({	username, password, code });
-        //Keyboard.dismiss();
+
+        if (/^(https?:\/\/)?(((\w|[0-9])+(\.(\w|[0-9-_])+)+)|localhost)(:\d+)?$/.test(url)) {
+            if (/^localhost(:\d+)?/.test(url)) {
+                url = `http://${url}`;
+            } else if (/^https?:\/\//.test(url) === false) {
+                url = `https://${url}`;
+            }
+        }
+        return url.replace(/\/+$/, '');
     }
 
+    async componentDidMount() {
+        let url = this.completeUrl('http://192.168.1.100:4000');
+        Rocket.connect(url);
+    }
+
+    async submit() {
+        try {
+            const { username, password } = this.state;
+            let userLogin = await Rocket.loginWithPassword({ username: username, password: password });
+            if (userLogin) {
+                let loginStore = JSON.stringify(userLogin);
+                await AsyncStorage.setItem("@userlogin", loginStore);
+                Rocket.subscribe("stream-notify-user", `${userLogin.id}/subscriptions-changed`, false);
+                Rocket.subscribe("stream-notify-user", `${userLogin.token}/rooms-changed`, false);
+                this.props.navigation.navigate('RoomView');
+                console.log('login', userLogin);
+            }
+
+        } catch (error) {
+            console.log(error);
+        }
+    }
 
     render() {
         return (
@@ -72,7 +88,7 @@ export default class LoginView extends Component {
 
                 <TouchableOpacity
                     style={styles.buttonContainer}
-                    onPress={this.submit}
+                    onPress={() => this.submit()}
                 >
                     <Text style={styles.button} accessibilityTraits='button'>LOGIN</Text>
                 </TouchableOpacity>
