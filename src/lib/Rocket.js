@@ -2,7 +2,10 @@ import Ddp from './ddp';
 import { hashPassword } from 'react-native-meteor/lib/utils';
 import reduxStore from './CreateStore';
 import onChangeListRoom from '../actions/ChangeListRoomAction';
+import onsendMessageAction from '../actions/sendMessageAction';
 const TOKEN_KEY = 'reactnativemeteor_usertoken';
+import messagesStatus from '../constants/messagesStatus';
+import Random from 'react-native-meteor/lib/Random';
 const SERVER_TIMEOUT = 30000;
 const Rocket = {
     TOKEN_KEY,
@@ -61,6 +64,11 @@ const Rocket = {
         this.ddp.on('stream-room-messages', (ddpMessage) => {
             // const message = this._buildMessage(ddpMessage.fields.args[0]);
             // return reduxStore.dispatch(roomMessageReceived(message));
+            console.log("stream-room-messages", ddpMessage);
+            ddpMessage.fields.args.forEach(element => {
+                reduxStore.dispatch(onsendMessageAction(element))
+            });
+            
         });
 
         this.ddp.on('stream-notify-room', (ddpMessage) => {
@@ -69,7 +77,7 @@ const Rocket = {
             // 	return;
             // }
             // return reduxStore.dispatch(someoneTyping({ _rid, username: ddpMessage.fields.args[0], typing: ddpMessage.fields.args[1] }));
-            console.log('co tin nhan den stream-notify-room');
+            console.log('stream-notify-room');
         });
 
         this.ddp.on('stream-notify-user', (ddpMessage) => {
@@ -90,7 +98,7 @@ const Rocket = {
             // 		sub.ro = data.ro;
             // 	});
             // }
-            console.log('co tin nhan den stream-notify-user');
+            console.log('stream-notify-user');
 
             //reduxStore.subscribe(() => console.log('reduxStore.getState', reduxStore.getState()))
             Rocket.getRoom().then((result) => {
@@ -208,44 +216,40 @@ const Rocket = {
     },
     emitTyping(room, t = true, username) {
         // const { login } = reduxStore.getState();
-        return call('stream-notify-room', `${room}/typing`, username, t);
+        return this.ddp.call('stream-notify-room', `${room}/typing`, username, t);
     },
-    async _sendMessageCall({ _id, rid, msg }) {
-        return call('sendMessage', { _id, rid, msg });
+    async _sendMessageCall(message) {
+        const { _id, rid, msg } = message;
+        return this.ddp.call('sendMessage', { _id, rid, msg });
     },
-    async sendMessage(rid, msg) {
-        // const tempMessage = this.getMessage(rid, msg);
-        // return RocketChat._sendMessageCall(tempMessage);
+    async sendMessage(rid, msg, userid, username) {
+        const tempMessage = this.getMessage(rid, msg, userid, username);
+        return Rocket._sendMessageCall(tempMessage);
     },
-    loadMessagesForRoom(rid, end, cb) {
+    getMessage(rid, msg = {}, userid, username) {
+        const _id = Random.id();
+        const message = {
+            _id,
+            rid,
+            msg,
+            ts: new Date(),
+            _updatedAt: new Date(),
+            status: messagesStatus.TEMP,
+            u: {
+                _id: userid || '1',
+                username: username
+            }
+        };
+        return message;
+    },
+    loadMessagesForRoom(rid, end) {
         return this.ddp.call('loadHistory', rid, end, 20)
-        // .then((data) => {
-        //     if (data && data.messages.length) {
-        //         const messages = data.messages.map(message => this._buildMessage(message));
-        //         // database.write(() => {
-        //         // 	messages.forEach((message) => {
-        //         // 		database.create('messages', message, true);
-        //         // 	});
-        //         // });
-        //     }
-        //     if (cb) {
-        //         cb({ end: data && data.messages.length < 20 });
-        //     }
-        //     return data.message;
-        // }, (err) => {
-        //     if (err) {
-        //         if (cb) {
-        //             cb({ end: true });
-        //         }
-        //         return Promise.reject(err);
-        //     }
-        // });
     },
     _buildMessage(message) {
         message.status = messagesStatus.SENT;
         message.attachments = message.attachments || [];
         if (message.urls) {
-            message.urls = RocketChat._parseUrls(message.urls);
+            message.urls = Rocket._parseUrls(message.urls);
         }
         // loadHistory returns message.starred as object
         // stream-room-messages returns message.starred as an array

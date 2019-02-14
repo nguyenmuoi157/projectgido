@@ -1,8 +1,5 @@
 import React, { Component } from 'react'
 import { Text, View, FlatList, Image, StyleSheet, TouchableOpacity, Button, AsyncStorage } from 'react-native'
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import Ddp from '../lib/ddp';
-import { hashPassword } from 'react-native-meteor/lib/utils';
 import RoomItem from '../presentation/RoomItem';
 import Rocket from '../lib/Rocket';
 import { connect } from 'react-redux'
@@ -41,7 +38,7 @@ class RoomView extends Component {
     componentWillMount() {
     }
 
-    async componentDidMount() {
+    componentDidMount() {
         // try {
         //     let loginStore = await AsyncStorage.getItem("@userlogin");
         //     let userlogin = JSON.parse(loginStore);
@@ -50,18 +47,22 @@ class RoomView extends Component {
         // } catch (error) {
         //     console.log(error);
         // }
+        this.getRoomView();
 
     }
 
     _keyExtractor = (item, index) => item.id;
 
-    async getRoomView() {
-        let data = await Rocket.getRoom();
-        if (data) {
-            this.setState({
-                DataList: data
-            })
-        }
+    getRoomView() {
+        Rocket.getRoom()
+            .then((data) => {
+                if (data) {
+                    this.setState({
+                        DataList: data
+                    })
+                }
+            });
+
 
         console.log('state datalist', this.state.DataList)
 
@@ -113,8 +114,8 @@ class RoomView extends Component {
 
     }
     _onPressItem(item) {
-        alert();
         console.log('item', item);
+        this.props.navigation.navigate('ChatView', { item: item });
     }
     _renderItem = ({ item }) => {
         return (
@@ -155,6 +156,15 @@ class RoomView extends Component {
     };
 
     render() {
+        // Rocket.getRoom()
+        //     .then((result) => {
+        //         if (result) {
+        //             this.setState({
+        //                 DataList: result
+        //             })
+        //         }
+        //     });
+
 
         listDataRoom = this.props.DataList ? this.props.DataList : this.state.DataList;
         console.log('listDataRoom', listDataRoom)
